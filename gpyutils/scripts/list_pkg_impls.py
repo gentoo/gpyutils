@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # gpyutils
-# (c) 2013-2024 Michał Górny <mgorny@gentoo.org>
+# (c) 2013-2025 Michał Górny <mgorny@gentoo.org>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import sys
@@ -37,18 +37,23 @@ def process(pkgs):
                 if cl == PackageClass.stable:
                     st_impls = [x.short_name for x in impls]
             if ptype is None:
-                if "distutils-r1" in p.inherits:
+                ptype = "(legacy)"
+                test = " "
+
+                if "distutils-r1" in p.inherits or "test" not in p.restrict:
                     with open(p.path) as f:
                         for x in f:
                             if x.startswith("DISTUTILS_USE_PEP517="):
                                 ptype = "(PEP517)"
+                            if x.startswith(("distutils_enable_tests ",
+                                             "python_test()")):
+                                test = "T"
+                                # we do not need to scan for anything else
                                 break
-                            if x.startswith("inherit "):
-                                ptype = "(legacy)"
-                                break
-                        else:
-                            ptype = "(legacy)"
-                else:
+
+                if "test" in p.restrict:
+                    test = "r"
+                if "distutils-r1" not in p.inherits:
                     ptype = "        "
 
             if kw_impls and st_impls:
@@ -65,6 +70,8 @@ def process(pkgs):
 
         assert ptype is not None
         out.append(ptype)
+
+        out.append(test)
 
         if st_impls:
             out.append(" STABLE:")
