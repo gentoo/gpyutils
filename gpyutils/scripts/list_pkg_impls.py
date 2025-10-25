@@ -35,7 +35,16 @@ def process_pkgcheck_output(path: Path | None) -> Generator[tuple[str, tuple[str
                    data["updates"])
 
 
-def process(pkgs, compat_updates: dict[str, tuple[str]]) -> None:
+def colorize(t: str, c: int) -> str:
+    return f"\3{c:02d}{t}\3"
+
+
+def process(pkgs,
+            compat_updates: dict[str, tuple[str]],
+            mirc_color: bool,
+            ) -> None:
+    C = colorize if mirc_color else lambda x, _: x
+
     key = "slotted_atom"
     for pg in group_packages(pkgs.sorted, key):
         kw_impls = []
@@ -96,25 +105,23 @@ def process(pkgs, compat_updates: dict[str, tuple[str]]) -> None:
 
         out = [f"{str(getattr(p, key)):<40}"]
         out.append("EAPI:")
-        out.append(eapi)
+        out.append(C(eapi, 11))
 
         assert ptype is not None
-        out.append(ptype)
+        out.append(C(ptype, 7))
 
-        out.append(test)
+        out.append(C(test, 9 if test == "T" else 4))
 
         if st_impls:
             out.append(" STABLE:")
-            out.extend(st_impls)
+            out.extend([C(x, 9) for x in st_impls])
 
-        # print only extra impls
-        for impl in list(kw_impls):
-            if impl in st_impls:
-                kw_impls.remove(impl)
-
+        kw_impls = [
+            x for x in kw_impls if x not in st_impls
+        ]
         if kw_impls:
             out.append("  ~ARCH:")
-            out.extend(kw_impls)
+            out.extend([C(x, 11) for x in kw_impls])
 
         # deduplicate, in case -9999 was missing some impls
         up_impls = [
@@ -122,13 +129,18 @@ def process(pkgs, compat_updates: dict[str, tuple[str]]) -> None:
         ]
         if up_impls:
             out.append("  UP:")
-            out.extend(up_impls)
+            out.extend([C(x, 7) for x in up_impls])
 
         print(" ".join(out))
 
 
 def main():
     argp = argparse.ArgumentParser()
+    argp.add_argument(
+        "--mirc-color",
+        action="store_true",
+        help="Include mIRC color codes",
+    )
     argp.add_argument(
         "--pkgcheck-output",
         type=Path,
@@ -140,7 +152,9 @@ def main():
     read_implementations(pm)
 
     compat_updates = dict(process_pkgcheck_output(args.pkgcheck_output))
-    process(pm.repositories["gentoo"], compat_updates)
+    process(pm.repositories["gentoo"],
+            compat_updates=compat_updates,
+            mirc_color=args.mirc_color)
     return 0
 
 
