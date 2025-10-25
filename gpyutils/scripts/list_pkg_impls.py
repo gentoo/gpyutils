@@ -3,19 +3,44 @@
 # (c) 2013-2025 Michał Górny <mgorny@gentoo.org>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from __future__ import annotations
+
+import argparse
+import json
 import sys
+
+from pathlib import Path
+from typing import Generator
 
 from gentoopm import get_package_manager
 
-from gpyutils.implementations import get_python_impls, read_implementations
+from gpyutils.implementations import (
+    get_impl_by_name,
+    get_python_impls,
+    read_implementations,
+)
 from gpyutils.packages import PackageClass, get_package_class, group_packages
 
 
-def process(pkgs):
+def process_pkgcheck_output(path: Path | None) -> Generator[tuple[str, tuple[str]]]:
+    if path is None:
+        return
+
+    with open(path, "r") as f:
+        for l in f:
+            data = json.loads(l)
+            if data["__class__"] != "PythonCompatUpdate":
+                continue
+            yield (f"{data['category']}/{data['package']}-{data['version']}",
+                   data["updates"])
+
+
+def process(pkgs, compat_updates: dict[str, tuple[str]]) -> None:
     key = "slotted_atom"
     for pg in group_packages(pkgs.sorted, key):
         kw_impls = []
         st_impls = []
+        up_impls = []
         eapi = None
         ptype = None
 
@@ -36,6 +61,11 @@ def process(pkgs):
             if not st_impls:
                 if cl == PackageClass.stable:
                     st_impls = [x.short_name for x in impls]
+            if not up_impls:
+                up_impls = [
+                    get_impl_by_name(x).short_name
+                    for x in compat_updates.get(f"{p.key}-{p.version}", [])
+                ]
             if ptype is None:
                 ptype = "(legacy)"
                 test = " "
@@ -86,14 +116,31 @@ def process(pkgs):
             out.append("  ~ARCH:")
             out.extend(kw_impls)
 
+        # deduplicate, in case -9999 was missing some impls
+        up_impls = [
+            x for x in up_impls if x not in kw_impls and x not in st_impls
+        ]
+        if up_impls:
+            out.append("  UP:")
+            out.extend(up_impls)
+
         print(" ".join(out))
 
 
 def main():
+    argp = argparse.ArgumentParser()
+    argp.add_argument(
+        "--pkgcheck-output",
+        type=Path,
+        help="Path to pkgcheck JsonStream with PythonCompatCheck results",
+    )
+    args = argp.parse_args()
+
     pm = get_package_manager()
     read_implementations(pm)
 
-    process(pm.repositories["gentoo"])
+    compat_updates = dict(process_pkgcheck_output(args.pkgcheck_output))
+    process(pm.repositories["gentoo"], compat_updates)
     return 0
 
 
