@@ -8,7 +8,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-
 from pathlib import Path
 from typing import Generator
 
@@ -22,13 +21,14 @@ from gpyutils.implementations import (
 from gpyutils.packages import PackageClass, get_package_class, group_packages
 
 
-def process_pkgcheck_output(path: Path | None) -> Generator[tuple[str, tuple[str]]]:
+def process_pkgcheck_output(path: Path | None,
+                            ) -> Generator[tuple[str, tuple[str]]]:
     if path is None:
         return
 
     with open(path, "r") as f:
-        for l in f:
-            data = json.loads(l)
+        for line in f:
+            data = json.loads(line)
             if data["__class__"] != "PythonCompatUpdate":
                 continue
             yield (f"{data['category']}/{data['package']}-{data['version']}",
@@ -43,7 +43,7 @@ def process(pkgs,
             compat_updates: dict[str, tuple[str]],
             mirc_color: bool,
             ) -> None:
-    C = colorize if mirc_color else lambda x, _: x
+    c = colorize if mirc_color else lambda x, _: x
 
     key = "slotted_atom"
     for pg in group_packages(pkgs.sorted, key):
@@ -105,23 +105,23 @@ def process(pkgs,
 
         out = [f"{str(getattr(p, key)):<40}"]
         out.append("EAPI:")
-        out.append(C(eapi, 11))
+        out.append(c(eapi, 11))
 
         assert ptype is not None
-        out.append(C(ptype, 7))
+        out.append(c(ptype, 7))
 
-        out.append(C(test, 9 if test == "T" else 4))
+        out.append(c(test, 9 if test == "T" else 4))
 
         if st_impls:
             out.append(" STABLE:")
-            out.extend([C(x, 9) for x in st_impls])
+            out.extend([c(x, 9) for x in st_impls])
 
         kw_impls = [
             x for x in kw_impls if x not in st_impls
         ]
         if kw_impls:
             out.append("  ~ARCH:")
-            out.extend([C(x, 11) for x in kw_impls])
+            out.extend([c(x, 11) for x in kw_impls])
 
         # deduplicate, in case -9999 was missing some impls
         up_impls = [
@@ -129,7 +129,7 @@ def process(pkgs,
         ]
         if up_impls:
             out.append("  UP:")
-            out.extend([C(x, 7) for x in up_impls])
+            out.extend([c(x, 7) for x in up_impls])
 
         print(" ".join(out))
 
