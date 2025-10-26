@@ -78,13 +78,20 @@ def process(pkgs,
             if ptype is None:
                 ptype = "(legacy)"
                 test = " "
+                attest = " "
 
-                if "distutils-r1" in p.inherits or "test" not in p.restrict:
+                if (
+                    "distutils-r1" in p.inherits or
+                    "test" not in p.restrict or
+                    "pypi" in p.inherits
+                ):
                     with open(p.path) as f:
                         for x in f:
                             if x.startswith("DISTUTILS_USE_PEP517="):
                                 ptype = "(PEP517)"
-                            if x.startswith(("distutils_enable_tests ",
+                            elif x.startswith("PYPI_VERIFY_REPO="):
+                                attest = "A"
+                            elif x.startswith(("distutils_enable_tests ",
                                              "python_test()")):
                                 test = "T"
                                 # we do not need to scan for anything else
@@ -98,6 +105,8 @@ def process(pkgs,
                     test = "r"
                 if "distutils-r1" not in p.inherits:
                     ptype = "        "
+                if "pypi" not in p.inherits:
+                    attest = " "
 
             if kw_impls and st_impls:
                 break
@@ -120,7 +129,7 @@ def process(pkgs,
             test_color = 4
         else:
             test_color = 11
-        out.append(c(test, test_color))
+        out.append(c(attest, 9) + c(test, test_color))
 
         if st_impls:
             out.append(" STABLE:")
