@@ -90,7 +90,12 @@ def process(pkgs,
                                 # we do not need to scan for anything else
                                 break
 
-                if "test" in p.restrict:
+                print(p.properties)
+                if "test_network" in p.properties:
+                    test = "N"
+                elif "test_privileged" in p.properties:
+                    test = "P"
+                elif "test" in p.restrict:
                     test = "r"
                 if "distutils-r1" not in p.inherits:
                     ptype = "        "
@@ -110,7 +115,13 @@ def process(pkgs,
         assert ptype is not None
         out.append(c(ptype, 7))
 
-        out.append(c(test, 9 if test == "T" else 4))
+        if test == "T":
+            test_color = 9
+        elif test == "r":
+            test_color = 4
+        else:
+            test_color = 11
+        out.append(c(test, test_color))
 
         if st_impls:
             out.append(" STABLE:")
