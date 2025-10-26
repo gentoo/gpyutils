@@ -90,7 +90,6 @@ def process(pkgs,
                                 # we do not need to scan for anything else
                                 break
 
-                print(p.properties)
                 if "test_network" in p.properties:
                     test = "N"
                 elif "test_privileged" in p.properties:
