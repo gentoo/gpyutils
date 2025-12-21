@@ -50,8 +50,15 @@ def main(prog_name, *argv):
         else:
             to_remove.update(impls)
 
+    ret = 0
     for ebuild in ebuilds:
-        with EbuildMangler(ebuild) as em:
+        try:
+            em = EbuildMangler(ebuild)
+        except (KeyError, ValueError) as exc:
+            print(exc, file=sys.stderr)
+            ret = 1
+            continue
+        with em:
             before = em.value
             for x in to_add:
                 em.add(x.r1_name)
@@ -62,7 +69,7 @@ def main(prog_name, *argv):
             print(f"{ANSI.red}-PYTHON_COMPAT=({before}){ANSI.reset}")
             print(f"{ANSI.green}+PYTHON_COMPAT=({after}){ANSI.reset}")
 
-    return 0
+    return ret
 
 
 def entry_point():
