@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # gpyutils
-# (c) 2013-2024 Michał Górny <mgorny@gentoo.org>
+# (c) 2013-2026 Michał Górny <mgorny@gentoo.org>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import argparse
@@ -11,6 +11,7 @@ import sys
 
 from gentoopm import get_package_manager
 from gentoopm.basepm.atom import PMAtom
+from gentoopm.exceptions import InvalidBashCodeError
 
 from gpyutils.ansi import ANSI
 from gpyutils.implementations import (
@@ -42,7 +43,12 @@ def print_package(p, pkg_print, maintainers=False):
 
 def process_one(p, repo, old, new, printer, fix=False, stabilizations=False,
                 eclass_filter=None):
-    impls = get_python_impls(p)
+    try:
+        impls = get_python_impls(p)
+    except InvalidBashCodeError:
+        sys.stderr.write(f"{ANSI.clear_line}{ANSI.red}Unable to process {p}{ANSI.reset}\n")
+        return None
+
     if impls is None:
         # not a Python package
         return None
