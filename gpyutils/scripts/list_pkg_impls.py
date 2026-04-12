@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # gpyutils
-# (c) 2013-2025 Michał Górny <mgorny@gentoo.org>
+# (c) 2013-2026 Michał Górny <mgorny@gentoo.org>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Generator
 
 from gentoopm import get_package_manager
+from gentoopm.exceptions import InvalidBashCodeError
 
 from gpyutils.implementations import (
     get_impl_by_name,
@@ -55,7 +56,10 @@ def process(pkgs,
 
         for p in reversed(pg):
             # if the newest version does not use python, stop here
-            impls = get_python_impls(p)
+            try:
+                impls = get_python_impls(p)
+            except InvalidBashCodeError:
+                break
             if impls is None:
                 break
 
