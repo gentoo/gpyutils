@@ -1,5 +1,5 @@
 # gpyutils
-# (c) 2013-2025 Michał Górny <mgorny@gentoo.org>
+# (c) 2013-2026 Michał Górny <mgorny@gentoo.org>
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from __future__ import annotations
@@ -130,6 +130,9 @@ class PythonCompat:
         self.nodes.append(n)
 
     def add(self, impl_name):
+        if impl_name in self:
+            return
+
         # first, try adding to an existing group
         # longer groups come first, so that should be good enough
         for g in self.groups:
@@ -215,6 +218,9 @@ class PythonCompat:
             elif isinstance(x, Value):
                 if not x.removed:
                     yield x
+
+    def __contains__(self, full_name: str) -> bool:
+        return any(x.full_name == full_name for x in self)
 
     def __repr__(self):
         return repr(self.nodes)
