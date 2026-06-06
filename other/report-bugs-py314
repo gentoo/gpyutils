@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# based on:
+# https://github.com/thesamesam/sam-gentoo-scripts/blob/main/qa/report-bugs-pkgcheck
+
+connection="Gentoo"
+# For testing, may wish to use NATTkA's test Bugzilla instance (Docker container)
+# https://github.com/mgorny/nattka/tree/master/test/bugzilla-instance
+#connection="gentoo-test"
+
+# This gets prefixed with 'package: '
+bug_summary="needs upgrade to Python 3.14"
+bug_description="This package does not support Python 3.14.  Please test it with Python 3.14 as a matter of urgency as the default will change in early June, as per the news item: https://www.gentoo.org/support/news-items/2026-04-16-python3-14.html.  Please check the information provided in the tracker.  Ask in #gentoo-python on IRC if need any help."
+
+get_maintainers() {
+	local pkg=${1}
+	local maintainers
+
+	maintainer_metadata=$(xmllint --xpath "//pkgmetadata/maintainer/email/text()" ${1}/metadata.xml 2>/dev/null)
+
+	if [[ -z ${maintainer_metadata} ]]; then
+		maintainer_metadata="maintainer-needed@gentoo.org"
+	fi
+
+	maintainer_metadata=$(echo "${maintainer_metadata}" | uniq)
+
+	echo "${maintainer_metadata[@]}"
+}
+
+report_bug() {
+	local package=${1}
+	shift
+	local assignee=${1}
+
+	# Leave $@ as CCs (non-primary maintainers)
+	shift
+
+	(
+		eindent
+		einfo "Assignee: ${assignee}"
+		[[ -n ${@} ]] && einfo "CC: ${@}"
+	)
+
+	cc=${*}
+	bugz_output=$(bugz \
+		--connection ${connection} \
+		post \
+		--batch \
+		--product "Gentoo Linux" \
+		--component "Current packages" \
+		--version unspecified \
+		--op-sys All \
+		--cc="${cc// /,}" \
+		--platform All \
+		-a "${assignee}" \
+		-t "${package}: ${bug_summary}" \
+		-d "${bug_description}")
+
+	echo "${bugz_output[@]}"
+
+	bug_id=$(echo "${bugz_output[@]}" | tail -n1)
+	# Output looks like:  * Info: Bug 26 submitted
+	# We want just the bug number
+	bug_id=$(echo "${bug_id}" | grep "Info: Bug" | grep -Po "([0-9]+)")
+
+	echo "Reported bug: ${bug_id}"
+	[[ -z ${bug_id} ]] && echo "${package}" >> failed.txt
+	# then call: bugz modify $(<bugs-filed.txt) <tracker-id>
+	echo "--add-dependson ${bug_id}" >> bugs-filed.txt
+
+	eoutdent
+}
+
+source /lib/gentoo/functions.sh
+
+# read package list from stdin, 310-to-311.txt style
+while read bad_package _; do
+	einfo "Found bad package: ${bad_package}"
+	eindent
+
+	maintainers=( $(get_maintainers ~/git/gentoo/${bad_package%%:*}) )
+	einfo "Maintainers: ${maintainers[*]}"
+
+	report_bug ${bad_package} ${maintainers[@]}
+	eoutdent
+done
