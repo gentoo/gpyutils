@@ -97,7 +97,10 @@ def process(pkgs,
                                 attest = "A"
                             elif x.startswith(("distutils_enable_tests ",
                                              "python_test()")):
-                                test = "T"
+                                if x.split()[:2] == ["distutils_enable_tests", "import-check"]:
+                                    test = "i"
+                                else:
+                                    test = "T"
                                 # we do not need to scan for anything else
                                 break
 
