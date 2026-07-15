@@ -29,13 +29,14 @@ def main(prog_name, *argv):
             ops.append(arg)
 
     if not ebuilds or not ops:
-        print(f"Usage: {prog_name} <foo.ebuild>... <[+|-](impl|@group)>...")
+        print(f"Usage: {prog_name} <foo.ebuild>... <[+|-](impl|old:new|@group)>...")
         return 1
 
     read_implementations(pm)
 
     to_add = set()
     to_remove = set()
+    to_update = set()
     for a in ops:
         if a[0] in ("-", "%", "+"):
             impl = a[1:]
@@ -43,6 +44,11 @@ def main(prog_name, *argv):
             impl = a
         if impl.startswith("@"):
             impls = get_impls_by_status(Status[impl[1:]])
+        elif a[0] == "+" and ":" in impl:
+            # +old:new
+            old, new = map(get_impl_by_name, impl.split(":", 1))
+            to_update.add((old, new))
+            continue
         else:
             impls = [get_impl_by_name(impl)]
         if a[0] not in ("-", "%"):
@@ -64,6 +70,9 @@ def main(prog_name, *argv):
                 em.add(x.r1_name)
             for x in to_remove:
                 em.remove(x.r1_name)
+            for old, new in to_update:
+                if old.r1_name in em:
+                    em.add(new.r1_name)
             after = em.value
             print(f"{ebuild}:")
             print(f"{ANSI.red}-PYTHON_COMPAT=({before}){ANSI.reset}")

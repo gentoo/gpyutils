@@ -480,6 +480,9 @@ class EbuildMangler:
     def remove(self, impl):
         self._value.remove(impl)
 
+    def __contains__(self, full_name: str) -> bool:
+        return full_name in self._value
+
     @property
     def value(self):
         return str(self._value)
