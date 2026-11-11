@@ -9,7 +9,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
 from gentoopm import get_package_manager
 from gentoopm.exceptions import InvalidBashCodeError
@@ -104,9 +104,18 @@ def process(pkgs,
                                 # we do not need to scan for anything else
                                 break
 
-                if "test_network" in p.properties:
+                def recursive_search(haystack: list[Any], needle: str) -> bool:
+                    for x in haystack:
+                        if not isinstance(x, str):
+                            if recursive_search(x, needle):
+                                return True
+                        elif x == needle:
+                            return True
+                    return False
+
+                if recursive_search(p.properties, "test_network"):
                     test = "N"
-                elif "test_privileged" in p.properties:
+                elif recursive_search(p.properties, "test_privileged"):
                     test = "P"
                 elif "test" in p.restrict:
                     test = "r"
